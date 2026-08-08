@@ -1,10 +1,10 @@
-# Passermarke — PDF drucken, wenn die schwarze Patrone leer ist
+# DruckenOhneSchwarz — PDF drucken, wenn die schwarze Patrone leer ist
 
 ### 🖨️ **[→ Tool direkt im Browser öffnen](https://swoopyfpv.github.io/pdf-to-passermarken/)**
 
 ![KI CODE](https://img.shields.io/badge/KI%20CODE-Nutzung%20auf%20eigene%20Verantwortung-orange)
 
-Schwarze Druckerpatrone leer, aber das Dokument muss raus? **Passermarke** wandelt Schwarz in einem PDF so um, dass dein Drucker es aus **Cyan, Magenta und Gelb mischt** (CMY-Schwarz) — oder alternativ komplett in **Dunkelblau** druckt.
+Schwarze Druckerpatrone leer, aber das Dokument muss raus? **DruckenOhneSchwarz** wandelt Schwarz in einem PDF so um, dass dein Drucker es aus **Cyan, Magenta und Gelb mischt** (CMY-Schwarz) — oder alternativ komplett in **Dunkelblau** druckt.
 
 Kostenlos, ohne Anmeldung, und **100% lokal im Browser**: Kein PDF wird hochgeladen, keine Datenübertragung. Du kannst das Repo auch einfach herunterladen und die `index.html` direkt lokal öffnen — funktioniert komplett offline.
 
