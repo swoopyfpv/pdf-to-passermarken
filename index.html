@@ -229,6 +229,7 @@ pdfjsLib.GlobalWorkerOptions.workerSrc =
 
 const $ = id => document.getElementById(id);
 let pdfBytes = null;
+let srcName = "dokument";
 let outputBlob = null;
 let mode = "cmy";
 
@@ -256,6 +257,7 @@ async function loadFile(f) {
     return;
   }
   pdfBytes = new Uint8Array(await f.arrayBuffer());
+  srcName = f.name.replace(/\.pdf$/i, "");
   $("filemeta").textContent = f.name + " · " + (f.size / 1024 / 1024).toFixed(2) + " MB";
   $("go").disabled = false;
   $("preview").classList.remove("on");
@@ -383,7 +385,7 @@ $("dl").addEventListener("click", () => {
   if (!outputBlob) return;
   const a = document.createElement("a");
   a.href = URL.createObjectURL(outputBlob);
-  a.download = mode === "blue" ? "druck-blau.pdf" : "druck-cmy-schwarz.pdf";
+  a.download = srcName + (mode === "blue" ? "_BLAU.pdf" : "_PASSERMARKEN.pdf");
   a.click();
   setTimeout(() => URL.revokeObjectURL(a.href), 5000);
 });
