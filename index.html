@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Passermarke — PDF drucken ohne schwarze Tinte | Schwarz aus CMY mischen</title>
+<meta name="description" content="Schwarze Druckerpatrone leer? Kostenloses Online-Tool: Wandelt Schwarz im PDF in CMY-Schwarz oder Blau um, damit der Drucker es aus Cyan, Magenta und Gelb mischt. 100% lokal im Browser, kein Upload, DSGVO-freundlich.">
+<meta name="keywords" content="drucken ohne schwarze tinte, schwarze patrone leer, pdf schwarz umwandeln, cmy schwarz, pdf blau drucken, drucker schwarz leer trotzdem drucken, composite black, print without black ink">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://swoopyfpv.github.io/pdf-to-passermarken/">
+<meta property="og:title" content="Passermarke — PDF drucken ohne schwarze Tinte">
+<meta property="og:description" content="Schwarze Patrone leer? Wandelt Schwarz im PDF um, damit der Drucker aus Cyan, Magenta und Gelb mischt. Kostenlos, komplett lokal im Browser, kein Upload.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://swoopyfpv.github.io/pdf-to-passermarken/">
+<meta property="og:locale" content="de_DE">
+<meta name="twitter:card" content="summary">
+<script src="vendor/pdf.min.js"></script>
+<script src="vendor/jspdf.umd.min.js"></script>
+<style>
+  :root {
+    --paper: #fafaf7;
+    --ink: #201d2e;
+    --ink-soft: #5b5670;
+    --cyan: #00a5c4;
+    --magenta: #d4257e;
+    --yellow: #e8b400;
+    --line: #d8d6cf;
+    --card: #ffffff;
+    --accent: #2a3f9e;
+    --mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+    min-height: 100vh;
+    padding: 32px 20px 64px;
+  }
+  .wrap { max-width: 760px; margin: 0 auto; }
+
+  header { display: flex; align-items: center; gap: 16px; margin-bottom: 8px; }
+  .regmark { flex: 0 0 auto; }
+  h1 { font-size: 1.5rem; letter-spacing: -0.02em; font-weight: 700; }
+  .sub { color: var(--ink-soft); font-size: 0.9rem; margin: 4px 0 28px 64px; max-width: 56ch; }
+
+  .drop {
+    border: 2px dashed var(--line);
+    border-radius: 10px;
+    background: var(--card);
+    padding: 40px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+  }
+  .drop:hover, .drop.over { border-color: var(--accent); background: #f4f5fc; }
+  .drop:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .drop strong { display: block; margin-bottom: 6px; }
+  .drop span { color: var(--ink-soft); font-size: 0.85rem; }
+  .filemeta { font-family: var(--mono); font-size: 0.8rem; color: var(--accent); margin-top: 10px; }
+
+  .panel {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 24px;
+    margin-top: 20px;
+  }
+  .panel h2 {
+    font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.1em;
+    color: var(--ink-soft); font-weight: 600; margin-bottom: 16px;
+    font-family: var(--mono);
+  }
+
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .modes { grid-template-columns: 1fr; } }
+  .mode {
+    border: 2px solid var(--line); border-radius: 8px; padding: 14px;
+    cursor: pointer; background: none; text-align: left; font: inherit; color: inherit;
+    transition: border-color .15s;
+  }
+  .mode[aria-pressed="true"] { border-color: var(--accent); background: #f4f5fc; }
+  .mode:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+  .mode b { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 0.95rem; }
+  .mode small { color: var(--ink-soft); line-height: 1.45; display: block; }
+  .swatch { width: 16px; height: 16px; border-radius: 4px; flex: 0 0 auto; }
+
+  .row { display: flex; align-items: center; gap: 12px; margin-top: 18px; flex-wrap: wrap; }
+  .row label { font-size: 0.85rem; color: var(--ink-soft); }
+  select, input[type=range] { accent-color: var(--accent); }
+  select {
+    font: inherit; padding: 6px 10px; border: 1px solid var(--line);
+    border-radius: 6px; background: var(--card); color: var(--ink);
+  }
+  .check { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin-top: 14px; }
+  .check input { width: 16px; height: 16px; accent-color: var(--accent); }
+
+  .go {
+    margin-top: 22px; width: 100%;
+    background: var(--ink); color: var(--paper);
+    border: none; border-radius: 8px; padding: 14px;
+    font: inherit; font-weight: 600; font-size: 1rem; cursor: pointer;
+  }
+  .go:hover:not(:disabled) { background: var(--accent); }
+  .go:disabled { opacity: 0.4; cursor: default; }
+  .go:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+  .progress { margin-top: 14px; display: none; }
+  .progress.on { display: block; }
+  .bar { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+  .bar i {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, var(--cyan), var(--magenta), var(--yellow));
+    transition: width .2s;
+  }
+  .progress p { font-family: var(--mono); font-size: 0.75rem; color: var(--ink-soft); margin-top: 6px; }
+
+  .preview { display: none; margin-top: 20px; }
+  .preview.on { display: block; }
+  .compare { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 560px) { .compare { grid-template-columns: 1fr; } }
+  .compare figure { margin: 0; }
+  .compare canvas {
+    width: 100%; height: auto; border: 1px solid var(--line);
+    border-radius: 6px; background: white; display: block;
+  }
+  .compare figcaption {
+    font-family: var(--mono); font-size: 0.72rem; color: var(--ink-soft);
+    margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .dl {
+    display: none; margin-top: 16px; width: 100%;
+    background: var(--accent); color: white; border: none; border-radius: 8px;
+    padding: 14px; font: inherit; font-weight: 600; font-size: 1rem; cursor: pointer;
+  }
+  .dl.on { display: block; }
+  .dl:hover { background: #1e2f7a; }
+
+  .hint {
+    margin-top: 20px; padding: 14px 16px; border-left: 3px solid var(--yellow);
+    background: #fdf8e8; border-radius: 0 8px 8px 0;
+    font-size: 0.85rem; line-height: 1.55; color: #5a4d1a;
+  }
+  .hint code { font-family: var(--mono); background: #f5ecc8; padding: 1px 5px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <svg class="regmark" width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
+      <circle cx="19" cy="20" r="11" fill="#00a5c4" opacity="0.85" style="mix-blend-mode:multiply"/>
+      <circle cx="29" cy="20" r="11" fill="#d4257e" opacity="0.85" style="mix-blend-mode:multiply"/>
+      <circle cx="24" cy="29" r="11" fill="#e8b400" opacity="0.85" style="mix-blend-mode:multiply"/>
+    </svg>
+    <h1>Passermarke</h1>
+  </header>
+  <p class="sub">Schwarze Patrone leer? Wandelt Schwarz im PDF so um, dass der Drucker es aus Cyan, Magenta und Gelb mischt — oder druckt gleich in Blau. Läuft komplett lokal im Browser, nichts wird hochgeladen.</p>
+
+  <div class="drop" id="drop" tabindex="0" role="button" aria-label="PDF auswählen">
+    <strong>PDF hier ablegen</strong>
+    <span>oder klicken zum Auswählen</span>
+    <div class="filemeta" id="filemeta"></div>
+    <input type="file" id="file" accept="application/pdf" hidden>
+  </div>
+
+  <div class="panel">
+    <h2>Modus</h2>
+    <div class="modes">
+      <button class="mode" id="modeCmy" aria-pressed="true">
+        <b><i class="swatch" style="background:#241a30"></i>CMY-Schwarz</b>
+        <small>Schwarz wird zu einem minimal getönten Dunkelton. Der Treiber sieht keine reine Neutralfarbe mehr und mischt aus den drei Farbpatronen. Sieht gedruckt fast wie Schwarz aus.</small>
+      </button>
+      <button class="mode" id="modeBlue" aria-pressed="false">
+        <b><i class="swatch" style="background:#1a3a8f"></i>Blau</b>
+        <small>Schwarz wird zu Dunkelblau. Verbraucht vor allem Cyan und Magenta, gut lesbar, ehrlicher Look wenn CMY-Schwarz zu grau wirkt.</small>
+      </button>
+    </div>
+
+    <div class="row">
+      <label for="dpi">Auflösung</label>
+      <select id="dpi">
+        <option value="150">150 dpi — schnell</option>
+        <option value="200" selected>200 dpi — Standard</option>
+        <option value="300">300 dpi — fein (große Datei)</option>
+      </select>
+    </div>
+
+    <label class="check">
+      <input type="checkbox" id="neutralOnly" checked>
+      Nur Schwarz/Grau ersetzen, farbige Inhalte unverändert lassen
+    </label>
+
+    <button class="go" id="go" disabled>Umwandeln</button>
+
+    <div class="progress" id="progress">
+      <div class="bar"><i id="barfill"></i></div>
+      <p id="progtext">Seite 0 / 0</p>
+    </div>
+
+    <div class="preview" id="preview">
+      <div class="compare">
+        <figure>
+          <figcaption>Vorher (Seite 1)</figcaption>
+          <canvas id="cvBefore"></canvas>
+        </figure>
+        <figure>
+          <figcaption>Nachher (Seite 1)</figcaption>
+          <canvas id="cvAfter"></canvas>
+        </figure>
+      </div>
+      <button class="dl" id="dl">PDF herunterladen</button>
+    </div>
+  </div>
+
+  <div class="hint">
+    <strong>Wichtig beim Drucken:</strong> Im Druckdialog <code>Farbe</code> wählen, nicht <code>Graustufen</code> — sonst zwingt der Treiber wieder die schwarze Patrone. Bei manchen Treibern hilft zusätzlich die Option „Nur Farbtinte verwenden" bzw. „Composite/CMY".
+  </div>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  "vendor/pdf.worker.min.js";
+
+const $ = id => document.getElementById(id);
+let pdfBytes = null;
+let outputBlob = null;
+let mode = "cmy";
+
+// Zielfarben: CMY-Schwarz = dunkel mit leichtem Violettstich (nicht neutral -> Treiber mischt aus CMY)
+const TARGETS = {
+  cmy:  { r: 36, g: 26, b: 48 },
+  blue: { r: 26, g: 58, b: 143 }
+};
+
+// --- Datei laden ---
+const drop = $("drop"), fileInput = $("file");
+drop.addEventListener("click", () => fileInput.click());
+drop.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") fileInput.click(); });
+drop.addEventListener("dragover", e => { e.preventDefault(); drop.classList.add("over"); });
+drop.addEventListener("dragleave", () => drop.classList.remove("over"));
+drop.addEventListener("drop", e => {
+  e.preventDefault(); drop.classList.remove("over");
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener("change", () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+
+async function loadFile(f) {
+  if (f.type !== "application/pdf" && !f.name.toLowerCase().endsWith(".pdf")) {
+    $("filemeta").textContent = "Keine PDF-Datei — bitte ein PDF wählen.";
+    return;
+  }
+  pdfBytes = new Uint8Array(await f.arrayBuffer());
+  $("filemeta").textContent = f.name + " · " + (f.size / 1024 / 1024).toFixed(2) + " MB";
+  $("go").disabled = false;
+  $("preview").classList.remove("on");
+  $("dl").classList.remove("on");
+}
+
+// --- Modus ---
+$("modeCmy").addEventListener("click", () => setMode("cmy"));
+$("modeBlue").addEventListener("click", () => setMode("blue"));
+function setMode(m) {
+  mode = m;
+  $("modeCmy").setAttribute("aria-pressed", m === "cmy");
+  $("modeBlue").setAttribute("aria-pressed", m === "blue");
+}
+
+// --- Pixel-Umfärbung ---
+// Neutrale (Grau/Schwarz-)Pixel werden proportional zur Dunkelheit auf die
+// Zielfarbe gemischt: Weiß bleibt Weiß, Schwarz wird zur Zielfarbe,
+// Grautöne und Kantenglättung bleiben sauber erhalten.
+function recolor(imgData, target, neutralOnly) {
+  const d = imgData.data;
+  const SAT_LIMIT = 40; // ab dieser Kanaldifferenz gilt ein Pixel als "farbig"
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i + 1], b = d[i + 2];
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    const sat = mx - mn;
+
+    let w = 1; // Anteil der Umfärbung
+    if (neutralOnly) {
+      if (sat >= SAT_LIMIT) continue;
+      w = 1 - sat / SAT_LIMIT; // weicher Übergang an Farbkanten
+    }
+
+    const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+    const f = 1 - lum / 255; // 0 = weiß, 1 = schwarz
+    if (f <= 0.01) continue;
+
+    const nr = 255 - (255 - target.r) * f;
+    const ng = 255 - (255 - target.g) * f;
+    const nb = 255 - (255 - target.b) * f;
+
+    d[i]     = r + (nr - r) * w;
+    d[i + 1] = g + (ng - g) * w;
+    d[i + 2] = b + (nb - b) * w;
+  }
+  return imgData;
+}
+
+// --- Konvertierung ---
+$("go").addEventListener("click", convert);
+
+async function convert() {
+  const target = TARGETS[mode];
+  const neutralOnly = $("neutralOnly").checked;
+  const dpi = parseInt($("dpi").value, 10);
+  const scale = dpi / 72;
+
+  $("go").disabled = true;
+  $("progress").classList.add("on");
+  $("dl").classList.remove("on");
+
+  try {
+    const pdf = await pdfjsLib.getDocument({ data: pdfBytes.slice() }).promise;
+    const { jsPDF } = window.jspdf;
+    let doc = null;
+
+    for (let p = 1; p <= pdf.numPages; p++) {
+      $("progtext").textContent = "Seite " + p + " / " + pdf.numPages;
+      $("barfill").style.width = ((p - 1) / pdf.numPages * 100) + "%";
+
+      const page = await pdf.getPage(p);
+      const vp1 = page.getViewport({ scale: 1 });      // Punktmaße
+      const vp = page.getViewport({ scale });           // Renderauflösung
+
+      const cv = document.createElement("canvas");
+      cv.width = Math.round(vp.width);
+      cv.height = Math.round(vp.height);
+      const ctx = cv.getContext("2d", { willReadFrequently: true });
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(0, 0, cv.width, cv.height);
+      await page.render({ canvasContext: ctx, viewport: vp }).promise;
+
+      // Vorschau "Vorher" (nur Seite 1)
+      if (p === 1) copyToPreview(cv, $("cvBefore"));
+
+      const img = ctx.getImageData(0, 0, cv.width, cv.height);
+      ctx.putImageData(recolor(img, target, neutralOnly), 0, 0);
+
+      if (p === 1) copyToPreview(cv, $("cvAfter"));
+
+      const orientation = vp1.width > vp1.height ? "l" : "p";
+      if (!doc) {
+        doc = new jsPDF({ orientation, unit: "pt", format: [vp1.width, vp1.height] });
+      } else {
+        doc.addPage([vp1.width, vp1.height], orientation);
+      }
+      doc.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, vp1.width, vp1.height);
+
+      cv.width = cv.height = 0; // Speicher freigeben
+      await new Promise(r => setTimeout(r, 0));
+    }
+
+    $("barfill").style.width = "100%";
+    $("progtext").textContent = pdf.numPages + " Seiten fertig";
+    outputBlob = doc.output("blob");
+    $("preview").classList.add("on");
+    $("dl").classList.add("on");
+  } catch (err) {
+    $("progtext").textContent = "Fehler: " + err.message;
+  } finally {
+    $("go").disabled = false;
+  }
+}
+
+function copyToPreview(src, dest) {
+  const maxW = 700;
+  const s = Math.min(1, maxW / src.width);
+  dest.width = Math.round(src.width * s);
+  dest.height = Math.round(src.height * s);
+  dest.getContext("2d").drawImage(src, 0, 0, dest.width, dest.height);
+}
+
+// --- Download ---
+$("dl").addEventListener("click", () => {
+  if (!outputBlob) return;
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(outputBlob);
+  a.download = mode === "blue" ? "druck-blau.pdf" : "druck-cmy-schwarz.pdf";
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+});
+</script>
+</body>
+</html>
